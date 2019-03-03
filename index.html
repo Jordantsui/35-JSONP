@@ -1,0 +1,131 @@
+<title>首页</title>
+<!--<link rel="stylesheet" href="/style.css">-->
+<h5>您的账户余额是<span id='amount'>&&&amount&&&</span></h5>
+<!--&&&amount&&&是占位符，可以随便写，但是一般代码不会写成&&& &&&的形式，这样写可帮助我们找到占位符-->
+<button id='button'>付款1块钱</button>
+
+
+<!--下面是各种尝试的操作-->
+
+<!--第一次-->
+<!-- <script>
+    button.addEventListener('click',(e)=>{
+        let n=amount.innerText
+        //n是字符串
+        let number=parseInt(n,10)
+        let newNumber=number-1
+        amount.innerText=newNumber
+    })
+</script> -->
+<!--这个script是最简单的假操作-->
+<!--这个script只会修改页面上的余额，不会更改数据库，所以刷新页面会恢复到原始状态-->
+<!--所以最好操作时，告诉服务器，让服务器修改数据库，JS目前做不到，这就用到了form标签，提交POST请求，再刷新页面-->
+
+<!--第二次-form-->
+<!-- <form action="/pay" method="POST" target='result'>
+    <input type="text" name='number' value="1">
+    <input type="submit" value='付款'>
+</form> -->
+<!--form标签的第二个input是个按钮，所以使用form时，就用不到上面的button了-->
+<!--向/pay路径发起POST请求-->
+<!--注意，在此过程之后，服务器返回什么，浏览器就会刷新页面，在当前页面显示什么，故此时应显示'success'/'fail'。若想看到余额，还需返回，并刷新页面-->
+<!--但这种方式对用户太不友好了-->
+<!--所以加了iframe，在iframe页面中刷新并显示'success'-->
+<!-- form表单提交之后，一定会刷新当前页面 -->
+<!-- 加了target之后，不会在当前页面刷新，而会在iframe中刷新 -->
+
+<!--第三次，form+iframe-->
+<!-- <iframe name='result' src="about:blank" frameborder="0" height=200></iframe> -->
+<!-- 但是，iframe现在已经很少有人使用了，那我们还能用什么方法呢？现在想想，能发请求的除了form，还有a标签,link,script,img等，有人就想出用img -->
+
+<!--第四次-->
+<!-- <script>
+    button.addEventListener('click',(e)=>{
+        let image=document.createElement('img')
+        image.src='/pay'
+        image.onload=function(){
+            alert('打钱成功')
+            //window.location.reload()//刷新页面
+            amount.innerText=amount.innerText-1//不需刷新页面即可更新页面上的数据
+        }
+        image.onerror=function(){
+            alert('打钱失败')
+        }
+    })
+</script> -->
+<!--这种方法的缺陷是只能GET，不能POST-->
+<!--根据状态码判断图片请求成功还是失败-->
+<!--判断图片请求成功仅靠状态码还不行，必须真的给一张图片-->
+
+
+<!--第五次-->
+<!--用script发起请求-->
+<!-- <script>
+    button.addEventListener('click',(e)=>{
+        let script=document.createElement('script')
+        script.src='http://jack.com:8002/pay'
+        //frank.com前端可调用另一个网站jack.com的后端服务器
+        //script.src='/pay'
+        document.body.appendChild(script)
+        //document这一句必须要加，这是用script的特别之处
+        script.onload=function(){
+            //alert('success')
+            e.currentTarget.remove()
+        }
+        script.onerror=function(){
+            alert('fail')
+            e.currentTarget.remove()
+        }
+    })
+</script> -->
+<!--每次点击，都会创建一个script，而且'/pay'里的内容会被执行（即response.write里的内容），执行之后再调用onload事件-->
+<!--监听，不管最后成功与否，都要删除script标签-->
+<!--这种方案叫SRJ——Server rendered javascript（服务器返回的javascript）-->
+
+
+<!--第五次的修正版——前后端解耦-->
+<script>
+    window.xxx = function (result) {
+        alert('这是jordan写的前端代码')
+        alert(`我得到的结果是${result}`)
+    }
+    button.addEventListener('click', (e) => {
+        let script = document.createElement('script')
+        script.src = 'http://jack.com:8002/pay?callbackName=xxx'
+        //frank.com前端可调用另一个网站jack.com的后端服务器
+        //script.src='/pay'
+        document.body.appendChild(script)
+        //document这一句必须要加，这是用script的特别之处
+        script.onload = function () {
+            //alert('success')
+            e.currentTarget.remove()
+        }
+        script.onerror = function () {
+            alert('fail')
+            e.currentTarget.remove()
+        }
+    })
+</script>
+
+
+<!--第五次的修正版——jquery实现JSONP-->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+<script>
+    button.addEventListener('click', (e) => {
+        $.ajax({
+            url: "http://jack.com:8002/pay",
+            jsonp: "callback",
+            dataType: "jsonp",
+            data: {
+                q: "select title,abstract,url from search.news where query=\"cat\"",
+                format: "json"
+            },
+            success: function (response) {
+                if(response==='success'){
+                    amount.innerText=amount.innerText-1
+                }
+            }
+        });
+        //用了jquery，函数名，script这些东西都不用管;我们只管response回来我们怎么处理
+    })
+</script>
